@@ -2,7 +2,6 @@
 
 namespace App\Services\AI;
 
-use App\Services\Schema\FieldTypeRegistry;
 use App\Services\Schema\FormSchemaValidator;
 use RuntimeException;
 
@@ -39,6 +38,7 @@ class AiFormGenerator
             if ($json === null) {
                 $messages[] = ['role' => 'assistant', 'content' => $response['content']];
                 $messages[] = ['role' => 'user', 'content' => 'Your last response did not contain valid JSON. Respond with ONLY a valid JSON object, no markdown or prose.'];
+
                 continue;
             }
 

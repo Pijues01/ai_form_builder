@@ -56,6 +56,7 @@ class JsonExtractor
                 } elseif ($char === '"') {
                     $inString = false;
                 }
+
                 continue;
             }
 

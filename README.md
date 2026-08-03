@@ -2,7 +2,7 @@
 
 A working AI-powered form builder built with **Laravel 11**, **Livewire 3**, **MySQL 8** and **Tailwind CSS**. Build forms manually with drag & drop, generate them from a natural-language prompt with AI, and (in later parts) import from Word/Excel.
 
-> **Status:** Part A (core builder) and Part B (AI generation) are complete. Part C (Word/Excel import) and Part D (differentiators) are next.
+> **Status:** Part A (core builder), Part B (AI generation) and Part C (Word/Excel import) are complete. Part D (differentiators) is next.
 
 ## Demo
 
@@ -28,6 +28,15 @@ A working AI-powered form builder built with **Laravel 11**, **Livewire 3**, **M
 - Generation runs as a **queued job** (`GenerateFormJob`) with visible status (queued → processing → completed/failed) via Livewire polling — no web request blocked.
 - **Model, token usage and latency are logged** against an `ai_generations` row and surfaced in the UI.
 - Two drivers: `openai` (any OpenAI-compatible chat-completions API) and `mock` (deterministic offline generator) for demos/tests without an API key.
+
+### Part C — Import from Word & Excel (done)
+- Upload a `.docx` or `.xlsx` and get back an editable form.
+- **Word:** Heading styles become sections, questions become fields, bullet / checkbox (`☐`) lists become options.
+- **Excel:** two documented layouts (structured rows and plain header row).
+- **Hybrid parsing:** deterministic first, AI only for ambiguous field types (see below).
+- **Preview & mapping screen** before anything is committed — fix a wrongly detected type, label or required flag, then create the form.
+- Files are parsed in a **queued job** (`ImportFileJob`); the preview page polls. Unparseable blocks are reported as warnings, and a broken file fails loudly with a clear message.
+- Sample files are committed under `storage/import-samples/` and covered by tests.
 
 ## Stack
 
@@ -74,22 +83,35 @@ Browser (Blade + Livewire + SortableJS)
    │
    ├─ /forms/*      → FormBuilder, FormList, FormSubmissions, FormVersions (Livewire)
    ├─ /f/{slug}     → PublicForm (public fill)
-   └─ /ai/*         → AiGenerate (prompt → queued job → status + preview)
-                        │
-                        ▼
-              GenerateFormJob (queued, database driver)
-                        │
-                        ▼
-        FormGenerator (drivers: openai / mock)
-           ├─ AiClient        → chat-completions REST call, latency/token capture
-           ├─ AiFormGenerator → system prompt + retry loop + JSON extraction/repair
-           └─ MockFormGenerator → keyword→field mapping (offline demo)
-                        │
-                        ▼
-             FormSchemaValidator.normalize() + validate()
-                        │
-                        ▼
-                 ai_generations row (status, model, tokens, latency)
+   ├─ /ai/*         → AiGenerate (prompt → queued job → status + preview)
+   └─ /import/*     → FormImport (upload → queued parse → preview/mapping)
+
+   AI path:
+        AiGenerate → GenerateFormJob (queued)
+                          │
+                          ▼
+              FormGenerator (drivers: openai / mock)
+                 ├─ AiClient        → chat-completions REST, latency/token capture
+                 ├─ AiFormGenerator → system prompt + retry loop + JSON repair
+                 └─ MockFormGenerator → keyword→field mapping (offline demo)
+                          │
+                          ▼
+                  FormSchemaValidator.normalize() + validate()
+                          │
+                          ▼
+                  ai_generations row (status, model, tokens, latency)
+
+   Import path:
+        FormImport → ImportFileJob (queued)
+                          │
+                          ▼
+               FormImportService
+                  ├─ DocxParser  → raw OOXML (ZipArchive + DOM/XPath)
+                  ├─ XlsxParser  → PhpSpreadsheet (2 layouts)
+                  └─ FieldTypeGuesser → heuristics (+ optional AI assist)
+                          │
+                          ▼
+                  import_previews row (draft + warnings)
 ```
 
 - The **JSON schema** lives in `forms.schema` (JSON column) and is the single source of truth for the builder, public renderer, and server-side validation.
@@ -105,6 +127,7 @@ Browser (Blade + Livewire + SortableJS)
 | `form_versions` | Versioned snapshots of `schema` | `form_id`, `version` (unique per form) |
 | `form_submissions` | Public submissions; `data` JSON + denormalized `searchable` | `form_id`, `created_at` (pagination/search) |
 | `ai_generations` | One row per AI run: prompt, mode, status, model, tokens, latency | `user_id`, `form_id`, `status`, `mode` |
+| `import_previews` | One row per imported file: draft + warnings before commit | `user_id`, `file_type`, `status`, `form_id` |
 
 Indexes are chosen for the queries that actually run at scale: lookups by `user_id` on every page, `slug` for public fill, `form_id` for submissions/versions, and `status`/`mode` for generation history.
 
@@ -120,6 +143,7 @@ This is a Livewire app, so most interaction is over Livewire's JSON updates rath
 | GET | `/forms/{form}/submissions/export` | auth | CSV export |
 | GET | `/forms/{form}/versions` | auth | Version history |
 | GET | `/ai` · `/ai/{generation}` | auth | AI generator + status |
+| GET | `/import` · `/import/{preview}` | auth | File import + preview/mapping |
 | POST | `/f/{slug}` | public | Submit a form response |
 
 ## AI prompt strategy (Part B)
@@ -142,8 +166,48 @@ This is a Livewire app, so most interaction is over Livewire's JSON updates rath
 
 **Retries & fallbacks:** HTTP retries live in `AiClient` (`retry(2, ...)`); validation-retry lives in `AiFormGenerator`. With `AI_DRIVER=mock` there is no network call at all, which keeps demos and CI deterministic.
 
+## Import strategy (Part C)
+
+### Word (.docx)
+
+The parser reads the raw OOXML (`word/document.xml`) via `ZipArchive` + `DOMXPath` — not a reader library — so heading styles, list numbering and checkbox glyphs are detected exactly as Word wrote them.
+
+| Document element | Becomes |
+| --- | --- |
+| Title style, or first Heading 1 | Form title |
+| Heading 1/2/3 (rest) | Sections |
+| Plain paragraph | Question/field (type inferred) |
+| Bullet / numbered list (`w:numPr`) | Options on the previous field |
+| `☐`/`☑`/`[ ]` checkbox list | Checkbox options |
+| Title-Case short line (no sentence punctuation) | Section heading |
+| Tables | Reported as a warning and skipped |
+
+### Excel (.xlsx)
+
+Uses PhpSpreadsheet with **two documented layouts**. The parser auto-detects which layout a sheet uses.
+
+**Layout A — structured rows (recommended):**
+
+| question | type | required | options | section |
+| --- | --- | --- | --- | --- |
+| Full Name | text | yes | | Contact |
+| Department | dropdown | | Engineering, Design, Marketing, HR | Job Preferences |
+| Why do you want to join? | textarea | yes | | Job Preferences |
+
+`type` is optional (unknown/blank cells fall back to guessing). `options` are separated by `|`, `,` or `;`. `section` groups rows into named sections.
+
+**Layout B — plain header row:** row 1 is field labels, one column per field. An optional `type` column is honoured. Sample data rows are ignored, except that a column whose sample values form a small distinct set (2–4 values) is offered as radio options.
+
+### Hybrid parsing: deterministic first, AI only when ambiguous
+
+1. **Deterministic pass** (`DocxParser`/`XlsxParser` + `FieldTypeGuesser`): type, options and required are inferred from the text via a conservative keyword/pattern table. Every result is a valid field type and is safe to commit as-is.
+2. **AI pass** (only when `AI_DRIVER=openai`): fields the heuristic marks low-confidence are batched into a single call that maps question text → field type. The AI's choices are validated against the field-type whitelist; a failure or invalid answer silently keeps the heuristic guess, so an import never fails because the AI did.
+3. **Human pass** (always): the preview/mapping screen shows every field with its detected type (with a high/low confidence badge) and lets you change type, label, required and options before committing.
+
+Files are parsed in a queued job; large files never block the upload. Empty rows, unparseable blocks and skipped tables are collected into warnings shown on the preview screen.
+
 ## Known limitations
 
 - AI quality depends on the model/provider; `mock` produces a keyword-based best guess.
-- Part C (Word/Excel import) and the remaining Part D items are not yet implemented.
+- Part D items are not yet implemented.
 - Deployment (live demo URL) is pending.

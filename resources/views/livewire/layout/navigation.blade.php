@@ -36,6 +36,9 @@ new class extends Component
                     <x-nav-link :href="route('ai.index')" :active="request()->routeIs('ai.*')" wire:navigate>
                         {{ __('AI Generate') }}
                     </x-nav-link>
+                    <x-nav-link :href="route('import.index')" :active="request()->routeIs('import.*')" wire:navigate>
+                        {{ __('Import') }}
+                    </x-nav-link>
                 </div>
             </div>
 
@@ -89,6 +92,9 @@ new class extends Component
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('ai.index')" :active="request()->routeIs('ai.*')" wire:navigate>
                 {{ __('AI Generate') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('import.index')" :active="request()->routeIs('import.*')" wire:navigate>
+                {{ __('Import') }}
             </x-responsive-nav-link>
         </div>
 

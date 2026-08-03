@@ -2,7 +2,6 @@
 
 namespace App\Services\AI;
 
-use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 

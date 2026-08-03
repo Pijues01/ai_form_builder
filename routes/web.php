@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\SubmissionExportController;
 use App\Livewire\AiGenerate;
+use App\Livewire\FormImport;
 use App\Livewire\Forms\FormBuilder;
 use App\Livewire\Forms\FormList;
 use App\Livewire\Forms\FormSubmissions;
@@ -26,6 +27,14 @@ Route::get('/forms/{form}/submissions', FormSubmissions::class)
 Route::get('/forms/{form}/submissions/export', [SubmissionExportController::class, 'csv'])
     ->middleware(['auth'])
     ->name('forms.submissions.export');
+
+Route::get('/import', FormImport::class)
+    ->middleware(['auth'])
+    ->name('import.index');
+
+Route::get('/import/{preview}', FormImport::class)
+    ->middleware(['auth'])
+    ->name('import.show');
 
 Route::get('/ai', AiGenerate::class)
     ->middleware(['auth'])
