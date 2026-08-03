@@ -1,66 +1,149 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# AI-Powered Form Builder
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A working AI-powered form builder built with **Laravel 11**, **Livewire 3**, **MySQL 8** and **Tailwind CSS**. Build forms manually with drag & drop, generate them from a natural-language prompt with AI, and (in later parts) import from Word/Excel.
 
-## About Laravel
+> **Status:** Part A (core builder) and Part B (AI generation) are complete. Part C (Word/Excel import) and Part D (differentiators) are next.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Demo
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- Live URL: _pending deployment_
+- Demo login: `demo@example.com` / `password` (seeded by `DatabaseSeeder`)
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Features
 
-## Learning Laravel
+### Part A — Core form builder (done)
+- Add fields by **drag & drop** (SortableJS) and **click-to-add**; reorder, duplicate, edit inline, delete.
+- 15 field types: text, textarea, number, email, phone, URL, date, time, dropdown, radio, checkbox, file upload, rating, section heading, paragraph.
+- Fields group into **sections** (reorderable); per-field config for label, key, placeholder, help text, default, required flag, options and validation rules (min/max, length, numeric/email/URL/regex, file mime/size, min/max selections).
+- **JSON schema is the single source of truth**: raw editor with two-way sync to the canvas, validated before save.
+- Every form gets a **public fill URL**; server-side validation is derived from the schema (never trust the browser).
+- Submissions stored, listed with pagination + search, and **exportable to CSV**.
+- Form **versioning**: every save records a schema version you can view (foundation for rollback in Part D).
+- Conditional visibility rules per field (Part D feature already exercised by the schema).
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+### Part B — AI form generation (done)
+- Turn a natural-language prompt (e.g. *"internship application with education history, skills and resume upload"*) into a complete, fully editable schema.
+- Output is **schema-valid**; malformed/partial JSON is extracted, repaired or retried, and a broken schema is never persisted.
+- **AI editing of existing forms** ("add an emergency contact section", "make phone required") — pick a form and the model receives the full current schema.
+- Generation runs as a **queued job** (`GenerateFormJob`) with visible status (queued → processing → completed/failed) via Livewire polling — no web request blocked.
+- **Model, token usage and latency are logged** against an `ai_generations` row and surfaced in the UI.
+- Two drivers: `openai` (any OpenAI-compatible chat-completions API) and `mock` (deterministic offline generator) for demos/tests without an API key.
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+## Stack
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+PHP 8.2+ · Laravel 11 · Livewire 3 + Volt · MySQL 8 · Tailwind · SortableJS · Blade · ES6.
 
-## Laravel Sponsors
+## Setup
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+```bash
+cp .env.example .env
+composer install
+npm install && npm run build
 
-### Premium Partners
+php artisan key:generate
+php artisan migrate --seed
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+# AI generation runs as a queued job — start the worker:
+php artisan queue:work
 
-## Contributing
+# Optionally process the queue in the same process for local demos:
+php artisan queue:work --once
+php artisan serve
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Open `http://localhost:8000`, log in with `demo@example.com` / `password`, then use **AI Generate** in the nav.
 
-## Code of Conduct
+## Environment variables
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `AI_DRIVER` | `mock` | `mock` (offline generator) or `openai` (any OpenAI-compatible endpoint) |
+| `AI_BASE_URL` | `https://api.openai.com/v1` | Base URL of the chat-completions API |
+| `AI_API_KEY` | — | API key. **Never commit a real key.** |
+| `AI_MODEL` | `gpt-4o-mini` | Model identifier |
+| `AI_MAX_TOKENS` | `3000` | Max tokens per call |
+| `AI_TEMPERATURE` | `0.3` | Sampling temperature (low → more deterministic JSON) |
+| `AI_TIMEOUT` | `90` | HTTP timeout in seconds |
+| `AI_RETRIES` | `2` | Max retries when output fails validation |
+| `QUEUE_CONNECTION` | `database` | Queue driver for the AI job |
 
-## Security Vulnerabilities
+## Architecture overview
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```
+Browser (Blade + Livewire + SortableJS)
+   │
+   ├─ /forms/*      → FormBuilder, FormList, FormSubmissions, FormVersions (Livewire)
+   ├─ /f/{slug}     → PublicForm (public fill)
+   └─ /ai/*         → AiGenerate (prompt → queued job → status + preview)
+                        │
+                        ▼
+              GenerateFormJob (queued, database driver)
+                        │
+                        ▼
+        FormGenerator (drivers: openai / mock)
+           ├─ AiClient        → chat-completions REST call, latency/token capture
+           ├─ AiFormGenerator → system prompt + retry loop + JSON extraction/repair
+           └─ MockFormGenerator → keyword→field mapping (offline demo)
+                        │
+                        ▼
+             FormSchemaValidator.normalize() + validate()
+                        │
+                        ▼
+                 ai_generations row (status, model, tokens, latency)
+```
 
-## License
+- The **JSON schema** lives in `forms.schema` (JSON column) and is the single source of truth for the builder, public renderer, and server-side validation.
+- **AI output** is stored in `ai_generations.result` only after passing `FormSchemaValidator::validate()`; the form is only written when the user clicks *Apply*.
+- The AI layer is a **service** (`App\Services\AI`) so it can be swapped for a separate FastAPI microservice over REST later without touching Livewire.
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## Database schema / ERD
+
+| Table | Purpose | Key indexes |
+| --- | --- | --- |
+| `users` | Auth | `email` (unique) |
+| `forms` | Forms; `schema` JSON is source of truth | `user_id`, `slug` (unique), `status` |
+| `form_versions` | Versioned snapshots of `schema` | `form_id`, `version` (unique per form) |
+| `form_submissions` | Public submissions; `data` JSON + denormalized `searchable` | `form_id`, `created_at` (pagination/search) |
+| `ai_generations` | One row per AI run: prompt, mode, status, model, tokens, latency | `user_id`, `form_id`, `status`, `mode` |
+
+Indexes are chosen for the queries that actually run at scale: lookups by `user_id` on every page, `slug` for public fill, `form_id` for submissions/versions, and `status`/`mode` for generation history.
+
+## API endpoints
+
+This is a Livewire app, so most interaction is over Livewire's JSON updates rather than a public REST API. Public endpoints:
+
+| Method | URL | Auth | Purpose |
+| --- | --- | --- | --- |
+| GET | `/forms` | auth | List forms |
+| GET | `/forms/{form}/edit` | auth | Builder canvas |
+| GET | `/forms/{form}/submissions` | auth | Submissions + search + pagination |
+| GET | `/forms/{form}/submissions/export` | auth | CSV export |
+| GET | `/forms/{form}/versions` | auth | Version history |
+| GET | `/ai` · `/ai/{generation}` | auth | AI generator + status |
+| POST | `/f/{slug}` | public | Submit a form response |
+
+## AI prompt strategy (Part B)
+
+**System prompt** (in `AiFormGenerator::systemPrompt()`):
+- Asserts the model is an "expert form designer that outputs only JSON".
+- Ships an **output contract**: the exact JSON shape (title, description, sections, fields) with field-level keys for `placeholder`, `help_text`, `default`, `required`, `options`, and the full `validation` object.
+- Ships a **field-type whitelist** (text, textarea, number, email, phone, url, date, time, dropdown, radio, checkbox, file, rating). Types outside the whitelist are treated as hallucinated and dropped/coerced by the validator.
+- Adds guidance: 1–3 sections of 3–8 fields, options required for choice fields, sensible mimes/max_size for files, realistic option values, "no markdown, no prose".
+
+**Output contract enforcement:**
+1. `JsonExtractor::extract()` strips markdown fences/prose, finds the outermost JSON object (balanced-brace scan), and best-effort repairs trailing commas and unquoted keys.
+2. Output is normalized with `FormSchemaValidator::normalize()` (fills ids/keys/validation defaults, coerces option shapes) and validated with `validate()`.
+3. On failure the failing output is fed back with a repair instruction and the call is retried (up to `AI_RETRIES`).
+4. If still invalid, the job **fails** with a clear error — a broken schema is never persisted.
+
+**Edit mode:** the current form schema is serialized into the user message with the instruction to return the *complete updated* schema, keeping structure unless the request changes it. This makes "add a section", "make required", "translate labels" all the same code path.
+
+**Hallucinated field types:** the validator's `normalize()` maps any unknown type to `text` (a deliberate safe fallback). Choice fields without options are also normalized/flagged so the UI never renders a broken field.
+
+**Retries & fallbacks:** HTTP retries live in `AiClient` (`retry(2, ...)`); validation-retry lives in `AiFormGenerator`. With `AI_DRIVER=mock` there is no network call at all, which keeps demos and CI deterministic.
+
+## Known limitations
+
+- AI quality depends on the model/provider; `mock` produces a keyword-based best guess.
+- Part C (Word/Excel import) and the remaining Part D items are not yet implemented.
+- Deployment (live demo URL) is pending.
