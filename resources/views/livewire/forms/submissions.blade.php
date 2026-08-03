@@ -16,6 +16,7 @@
                     href="{{ route('forms.submissions.export', ['form' => $form, 'search' => $search]) }}"
                     class="px-4 py-2 rounded-md bg-green-600 text-sm font-medium text-white hover:bg-green-500"
                 >Export CSV</a>
+                <a href="{{ route('forms.analytics', $form) }}" wire:navigate class="px-4 py-2 rounded-md border border-gray-300 text-sm text-gray-700 hover:bg-gray-50">Analytics</a>
                 <a href="{{ route('forms.edit', $form) }}" wire:navigate class="px-4 py-2 rounded-md border border-gray-300 text-sm text-gray-700 hover:bg-gray-50">Edit form</a>
             </div>
         </div>

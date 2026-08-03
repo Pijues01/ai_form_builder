@@ -6,6 +6,7 @@ use App\Models\Form;
 use App\Models\FormSubmission;
 use App\Services\Schema\FieldTypeRegistry;
 use App\Services\Schema\FormSchemaValidator;
+use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Component;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
@@ -22,7 +23,11 @@ class PublicForm extends Component
 
     public string $honeypot = '';
 
+    public string $error = '';
+
     public int $startedAt = 0;
+
+    protected int $maxSubmissionsPerMinute = 10;
 
     public function mount(Form $form): void
     {
@@ -65,6 +70,12 @@ class PublicForm extends Component
 
         if ($this->honeypot !== '') {
             $this->values = [];
+
+            return;
+        }
+
+        if ($this->isRateLimited($form)) {
+            $this->error = 'Too many submissions from your address. Please wait a minute and try again.';
 
             return;
         }
@@ -123,6 +134,19 @@ class PublicForm extends Component
 
         $this->values = [];
         $this->submitted = true;
+    }
+
+    protected function isRateLimited(Form $form): bool
+    {
+        $key = 'form-fill:'.$form->id.':'.request()->ip();
+
+        if (RateLimiter::tooManyAttempts($key, $this->maxSubmissionsPerMinute)) {
+            return true;
+        }
+
+        RateLimiter::hit($key, 60);
+
+        return false;
     }
 
     public function render()

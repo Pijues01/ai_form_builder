@@ -19,6 +19,10 @@
         <form wire:submit="submit" class="space-y-6">
             <input type="text" wire:model="honeypot" class="hidden" tabindex="-1" autocomplete="off" aria-hidden="true">
 
+            @if ($error)
+                <div class="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">{{ $error }}</div>
+            @endif
+
             @foreach ($visibleSections as $section)
                 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                     @if ($section['title'])

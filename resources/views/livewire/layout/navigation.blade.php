@@ -33,6 +33,9 @@ new class extends Component
                     <x-nav-link :href="route('forms.index')" :active="request()->routeIs('forms.*')" wire:navigate>
                         {{ __('My Forms') }}
                     </x-nav-link>
+                    <x-nav-link :href="route('templates.index')" :active="request()->routeIs('templates.*')" wire:navigate>
+                        {{ __('Templates') }}
+                    </x-nav-link>
                     <x-nav-link :href="route('ai.index')" :active="request()->routeIs('ai.*')" wire:navigate>
                         {{ __('AI Generate') }}
                     </x-nav-link>
@@ -89,6 +92,9 @@ new class extends Component
         <div class="pt-2 pb-3 space-y-1">
             <x-responsive-nav-link :href="route('forms.index')" :active="request()->routeIs('forms.*')" wire:navigate>
                 {{ __('My Forms') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('templates.index')" :active="request()->routeIs('templates.*')" wire:navigate>
+                {{ __('Templates') }}
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('ai.index')" :active="request()->routeIs('ai.*')" wire:navigate>
                 {{ __('AI Generate') }}

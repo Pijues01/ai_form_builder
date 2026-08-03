@@ -1,8 +1,8 @@
 # AI-Powered Form Builder
 
-A working AI-powered form builder built with **Laravel 11**, **Livewire 3**, **MySQL 8** and **Tailwind CSS**. Build forms manually with drag & drop, generate them from a natural-language prompt with AI, and (in later parts) import from Word/Excel.
+A working AI-powered form builder built with **Laravel 11**, **Livewire 3**, **MySQL 8** and **Tailwind CSS**. Build forms manually with drag & drop, generate them from a natural-language prompt with AI, import from Word/Excel, and — in Part D — arm them with analytics, spam protection and a template library.
 
-> **Status:** Part A (core builder), Part B (AI generation) and Part C (Word/Excel import) are complete. Part D (differentiators) is next.
+> **Status:** Parts A–D are complete. See `DECISIONS.md` for the design decisions behind each part.
 
 ## Demo
 
@@ -37,6 +37,14 @@ A working AI-powered form builder built with **Laravel 11**, **Livewire 3**, **M
 - **Preview & mapping screen** before anything is committed — fix a wrongly detected type, label or required flag, then create the form.
 - Files are parsed in a **queued job** (`ImportFileJob`); the preview page polls. Unparseable blocks are reported as warnings, and a broken file fails loudly with a clear message.
 - Sample files are committed under `storage/import-samples/` and covered by tests.
+
+### Part D — Differentiators (done)
+
+1. **Form analytics & drop-off funnel** (`/forms/{form}/analytics`): summary cards (total responses, avg. questions answered, avg. filling time), a 7/14/30-day responses-per-day chart, and a per-question completion funnel that sorts lowest completion first so drop-off points surface immediately.
+2. **Rate limiting & spam protection** on public forms: a per-form, per-IP `RateLimiter` (10 submits/min) on top of the existing honeypot + min-fill-time checks, with a friendly error for throttled humans.
+3. **Template library** (`/templates`): four curated, schema-valid starter forms (Contact Us, Event Registration, Job Application, Customer Feedback). "Use template" creates a versioned draft form and drops you into the builder.
+
+See `DECISIONS.md` for the problem/trade-off write-up behind each differentiator.
 
 ## Stack
 
@@ -81,8 +89,9 @@ Open `http://localhost:8000`, log in with `demo@example.com` / `password`, then 
 ```
 Browser (Blade + Livewire + SortableJS)
    │
-   ├─ /forms/*      → FormBuilder, FormList, FormSubmissions, FormVersions (Livewire)
-   ├─ /f/{slug}     → PublicForm (public fill)
+   ├─ /forms/*      → FormBuilder, FormList, FormSubmissions, FormAnalytics, FormVersions (Livewire)
+   ├─ /f/{slug}     → PublicForm (public fill, spam-protected)
+   ├─ /templates    → Templates (start from a curated template)
    ├─ /ai/*         → AiGenerate (prompt → queued job → status + preview)
    └─ /import/*     → FormImport (upload → queued parse → preview/mapping)
 
@@ -141,10 +150,12 @@ This is a Livewire app, so most interaction is over Livewire's JSON updates rath
 | GET | `/forms/{form}/edit` | auth | Builder canvas |
 | GET | `/forms/{form}/submissions` | auth | Submissions + search + pagination |
 | GET | `/forms/{form}/submissions/export` | auth | CSV export |
+| GET | `/forms/{form}/analytics` | auth | Analytics & drop-off funnel (Part D) |
 | GET | `/forms/{form}/versions` | auth | Version history |
+| GET | `/templates` | auth | Template library (Part D) |
 | GET | `/ai` · `/ai/{generation}` | auth | AI generator + status |
 | GET | `/import` · `/import/{preview}` | auth | File import + preview/mapping |
-| POST | `/f/{slug}` | public | Submit a form response |
+| POST | `/f/{slug}` | public | Submit a form response (rate-limited) |
 
 ## AI prompt strategy (Part B)
 
@@ -209,5 +220,7 @@ Files are parsed in a queued job; large files never block the upload. Empty rows
 ## Known limitations
 
 - AI quality depends on the model/provider; `mock` produces a keyword-based best guess.
-- Part D items are not yet implemented.
+- Analytics per-field completion is computed from stored JSON in PHP — fine for thousands of submissions, not millions (see `DECISIONS.md` D1).
+- Rate limiting is per-IP (10/min); a shared NAT IP can hit the cap (see `DECISIONS.md` D2).
+- Templates are curated in code, not in the database (see `DECISIONS.md` D3).
 - Deployment (live demo URL) is pending.

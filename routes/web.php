@@ -3,11 +3,13 @@
 use App\Http\Controllers\SubmissionExportController;
 use App\Livewire\AiGenerate;
 use App\Livewire\FormImport;
+use App\Livewire\Forms\FormAnalytics;
 use App\Livewire\Forms\FormBuilder;
 use App\Livewire\Forms\FormList;
 use App\Livewire\Forms\FormSubmissions;
 use App\Livewire\Forms\FormVersions;
 use App\Livewire\PublicForm;
+use App\Livewire\Templates;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/forms');
@@ -16,6 +18,10 @@ Route::get('/forms', FormList::class)
     ->middleware(['auth'])
     ->name('forms.index');
 
+Route::get('/templates', Templates::class)
+    ->middleware(['auth'])
+    ->name('templates.index');
+
 Route::get('/forms/{form}/edit', FormBuilder::class)
     ->middleware(['auth'])
     ->name('forms.edit');
@@ -23,6 +29,10 @@ Route::get('/forms/{form}/edit', FormBuilder::class)
 Route::get('/forms/{form}/submissions', FormSubmissions::class)
     ->middleware(['auth'])
     ->name('forms.submissions');
+
+Route::get('/forms/{form}/analytics', FormAnalytics::class)
+    ->middleware(['auth'])
+    ->name('forms.analytics');
 
 Route::get('/forms/{form}/submissions/export', [SubmissionExportController::class, 'csv'])
     ->middleware(['auth'])
