@@ -37,7 +37,11 @@
     "scripts": {
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
+            "@php scripts/fix-pdo-constant.php",
             "@php artisan package:discover --ansi"
+        ],
+        "post-install-cmd": [
+            "@php scripts/fix-pdo-constant.php"
         ],
         "post-update-cmd": [
             "@php artisan vendor:publish --tag=laravel-assets --ansi --force"
