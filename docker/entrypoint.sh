@@ -4,10 +4,10 @@ set -e
 # Ensure storage dirs exist (Laravel 11 file-cache needs cache/data)
 mkdir -p storage/framework/sessions storage/framework/views storage/framework/cache/data storage/logs
 
-# Generate app key if not set (ephemeral containers)
+# Generate app key if not set (ephemeral containers; no .env file in image)
 if [ -z "$APP_KEY" ]; then
     echo ">> Generating application key..."
-    php artisan key:generate --force --no-interaction
+    export APP_KEY="$(php artisan key:generate --force --no-interaction --show)"
 fi
 
 # Wait for the database before migrating
