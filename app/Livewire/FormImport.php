@@ -36,7 +36,7 @@ class FormImport extends Component
         }
     }
 
-    public function upload(): void
+    public function handleUpload(): void
     {
         $this->error = null;
 

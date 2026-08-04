@@ -20,7 +20,7 @@
                     </div>
                 @endif
 
-                <form wire:submit="upload" class="space-y-4">
+                <form wire:submit="handleUpload" class="space-y-4">
                     <label class="block text-sm font-medium text-gray-700">
                         Upload a <code>.docx</code> or <code>.xlsx</code> file
                     </label>

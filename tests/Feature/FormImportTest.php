@@ -47,7 +47,7 @@ class FormImportTest extends TestCase
         Livewire::actingAs($this->user)
             ->test(FormImport::class)
             ->set('importFile', $file)
-            ->call('upload');
+            ->call('handleUpload');
 
         $preview = ImportPreview::where('user_id', $this->user->id)->first();
 
@@ -64,7 +64,7 @@ class FormImportTest extends TestCase
         Livewire::actingAs($this->user)
             ->test(FormImport::class)
             ->set('importFile', UploadedFile::fake()->create('notes.txt', 100))
-            ->call('upload')
+            ->call('handleUpload')
             ->assertHasErrors('importFile');
 
         $this->assertSame(0, ImportPreview::count());
