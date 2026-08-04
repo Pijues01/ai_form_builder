@@ -42,7 +42,28 @@ class FormImportService
             $draft = $this->aiAssist($draft);
         }
 
+        $this->sanitizeChoiceTypes($draft);
+
         return $draft;
+    }
+
+    /**
+     * Choice types (dropdown/radio/checkbox) are invalid without options.
+     * A heuristic that guessed one without options falls back to plain text so
+     * the parsed draft is always schema-valid.
+     */
+    private function sanitizeChoiceTypes(array &$draft): void
+    {
+        foreach ($draft['sections'] as &$section) {
+            foreach ($section['fields'] as &$field) {
+                if (FieldTypeRegistry::hasOptions($field['type']) && empty($field['options'])) {
+                    $field['type'] = 'text';
+                    $field['confidence'] = 'low';
+                }
+            }
+            unset($field);
+        }
+        unset($section);
     }
 
     /**

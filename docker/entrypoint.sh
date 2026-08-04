@@ -4,6 +4,10 @@ set -e
 # Ensure storage dirs exist (Laravel 11 file-cache needs cache/data)
 mkdir -p storage/framework/sessions storage/framework/views storage/framework/cache/data storage/logs
 
+# PHP-FPM runs as www-data; keep storage writable (artisan runs earlier as root
+# can create root-owned log files that would otherwise break exception logging)
+chown -R www-data:www-data storage 2>/dev/null || true
+
 # Auto-map Railway's managed MySQL variables (MYSQLHOST, MYSQLPORT, ...) to Laravel's DB_*
 if [ -n "$MYSQLHOST" ]; then
     echo ">> Detected Railway MySQL at $MYSQLHOST"

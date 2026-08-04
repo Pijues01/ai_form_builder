@@ -123,6 +123,13 @@ class FormImportTest extends TestCase
         $labels = array_column($preview->result['sections'][0]['fields'], 'label');
         $this->assertContains('Email', $labels);
         $this->assertContains('Years of experience', $labels);
+
+        $validator = app(FormSchemaValidator::class);
+        $check = $validator->validate($validator->normalize($preview->result));
+        $this->assertTrue($check['valid'], implode(' | ', $check['errors']));
+
+        $fields = collect($preview->result['sections'][0]['fields'])->keyBy('label');
+        $this->assertNotSame('dropdown', $fields->get('Department')['type'] ?? null, 'Dropdown without options must fall back to a safe type.');
     }
 
     public function test_import_job_reports_unparseable_file(): void
