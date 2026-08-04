@@ -6,7 +6,7 @@ A working AI-powered form builder built with **Laravel 11**, **Livewire 3**, **M
 
 ## Demo
 
-- Live URL: _pending deployment_
+- Live URL: https://aiformbuilder-production.up.railway.app
 - Demo login: `demo@example.com` / `password` (seeded by `DatabaseSeeder`)
 
 ## Features
@@ -69,6 +69,20 @@ php artisan serve
 ```
 
 Open `http://localhost:8000`, log in with `demo@example.com` / `password`, then use **AI Generate** in the nav.
+
+## Deployment (Docker)
+
+The repo ships a 3-stage `Dockerfile` (composer deps → vite assets → `php:8.3-fpm-alpine` runtime with nginx + supervisord) and a `docker-compose.yml` for local runs:
+
+```bash
+docker compose up -d --build
+```
+
+For Railway (or any host behind a TLS proxy):
+
+- The container listens on `$PORT` (default 80) and expects `DB_*` variables, or Railway's `MYSQLHOST/MYSQLPORT/MYSQLUSER/MYSQLPASSWORD/MYSQLDATABASE`, or a `DATABASE_URL` connection string.
+- `docker/entrypoint.sh` waits for the database, runs `migrate --force`, seeds the demo user when `APP_SEED=true`, caches config/routes/views, links storage, then starts nginx + php-fpm + the queue worker.
+- `bootstrap/app.php` trusts forwarded headers so generated URLs use HTTPS behind the proxy.
 
 ## Environment variables
 
@@ -223,4 +237,3 @@ Files are parsed in a queued job; large files never block the upload. Empty rows
 - Analytics per-field completion is computed from stored JSON in PHP — fine for thousands of submissions, not millions (see `DECISIONS.md` D1).
 - Rate limiting is per-IP (10/min); a shared NAT IP can hit the cap (see `DECISIONS.md` D2).
 - Templates are curated in code, not in the database (see `DECISIONS.md` D3).
-- Deployment (live demo URL) is pending.
