@@ -4,6 +4,17 @@ set -e
 # Ensure storage dirs exist (Laravel 11 file-cache needs cache/data)
 mkdir -p storage/framework/sessions storage/framework/views storage/framework/cache/data storage/logs
 
+# Auto-map Railway's managed MySQL variables (MYSQLHOST, MYSQLPORT, ...) to Laravel's DB_*
+if [ -n "$MYSQLHOST" ]; then
+    echo ">> Detected Railway MySQL at $MYSQLHOST"
+    export DB_CONNECTION="${DB_CONNECTION:-mysql}"
+    export DB_HOST="${DB_HOST:-$MYSQLHOST}"
+    export DB_PORT="${DB_PORT:-${MYSQLPORT:-3306}}"
+    export DB_DATABASE="${DB_DATABASE:-$MYSQLDATABASE}"
+    export DB_USERNAME="${DB_USERNAME:-$MYSQLUSER}"
+    export DB_PASSWORD="${DB_PASSWORD:-$MYSQLPASSWORD}"
+fi
+
 # Generate app key if not set (ephemeral containers; no .env file in image)
 if [ -z "$APP_KEY" ]; then
     echo ">> Generating application key..."
