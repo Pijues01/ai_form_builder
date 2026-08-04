@@ -15,6 +15,29 @@ if [ -n "$MYSQLHOST" ]; then
     export DB_PASSWORD="${DB_PASSWORD:-$MYSQLPASSWORD}"
 fi
 
+# Fallback: parse a MySQL connection URL (DATABASE_URL / MYSQL_URL)
+if [ -z "$DB_HOST" ] && [ -n "${DATABASE_URL:-${MYSQL_URL:-}}" ]; then
+    DB_URL="${MYSQL_URL:-$DATABASE_URL}"
+    echo ">> Parsing MySQL connection URL"
+    rest="${DB_URL#*://}"
+    userpass="${rest%%@*}"
+    hostportdb="${rest#*@}"
+    user="${userpass%%:*}"
+    pass="${userpass#*:}"
+    hostport="${hostportdb%%/*}"
+    db="${hostportdb#*/}"
+    case "$hostport" in
+        *:*) host="${hostport%%:*}"; port="${hostport##*:}";;
+        *)   host="$hostport"; port="3306";;
+    esac
+    export DB_CONNECTION="${DB_CONNECTION:-mysql}"
+    export DB_HOST="$host"
+    export DB_PORT="$port"
+    export DB_DATABASE="$db"
+    export DB_USERNAME="$user"
+    export DB_PASSWORD="$pass"
+fi
+
 # Generate app key if not set (ephemeral containers; no .env file in image)
 if [ -z "$APP_KEY" ]; then
     echo ">> Generating application key..."
